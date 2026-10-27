@@ -1,0 +1,60 @@
+services:
+  postgresdb:
+    image: postgres:16-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: docker
+      POSTGRES_DB: exam_2400031555
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d exam_2400031555"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - springboot-postgres-net
+
+  backend:
+    image: surendragudapati/docker-backend-2400031555:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: docker-springboot
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresdb:5432/exam_2400031555
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: docker
+      EUREKA_CLIENT_ENABLED: "false"
+    ports:
+      - "8083:8081"
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - springboot-postgres-net
+
+  frontend:
+    image: surendragudapati/docker-frontend-2400031555:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: docker-react
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: on-failure
+    networks:
+      - springboot-postgres-net
+
+volumes:
+  postgres_data:
+
+networks:
+  springboot-postgres-net:
